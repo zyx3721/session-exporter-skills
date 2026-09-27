@@ -147,6 +147,11 @@ def main():
         # 剔除系统注入后无正文且无内容的消息
         if role == "user" and not texts and not file_parts:
             continue
+        # 默认导出（--no-tools）下，仅工具调用而无文本正文的助手消息只剩一行调用清单，
+        # 属于过程噪音，整条剔除；--include-tools 时工具详情本身就是内容，不受此限
+        if role == "assistant" and not args.include_tools \
+                and not texts and not reasoning_parts and not file_parts:
+            continue
         if role == "assistant" and not texts and not tool_parts and not file_parts:
             continue
 

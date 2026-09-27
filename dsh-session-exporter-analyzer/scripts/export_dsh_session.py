@@ -202,7 +202,7 @@ def arguments_brief(raw: Any) -> str:
     return ""
 
 
-def build_blocks(records: list[dict[str, Any]], include_reasoning: bool) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def build_blocks(records: list[dict[str, Any]], include_reasoning: bool, include_tools: bool) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """按顺序把记录归并成用户/助手块，工具调用挂到当前助手块上。"""
     blocks: list[dict[str, Any]] = []
     meta: dict[str, Any] = {
@@ -265,9 +265,14 @@ def build_blocks(records: list[dict[str, Any]], include_reasoning: bool) -> tupl
                     tool["result"] = text
                     break
 
+    # 默认导出（--no-tools）下，仅工具调用而无文本正文的助手块只剩一行调用清单，
+    # 属于过程噪音，整条剔除；--include-tools 时工具详情本身就是内容，不受此限
     keep = [
         block for block in blocks
-        if block["role"] == "user" or block["texts"] or block["tools"] or block["reasoning"]
+        if block["role"] == "user"
+        or block["texts"]
+        or block["reasoning"]
+        or (include_tools and block["tools"])
     ]
     return keep, meta
 
@@ -369,7 +374,7 @@ def main() -> int:
         print(json.dumps({"error": str(exc)}, ensure_ascii=False))
         return 1
 
-    blocks, meta = build_blocks(records, args.include_reasoning)
+    blocks, meta = build_blocks(records, args.include_reasoning, args.include_tools)
     meta["id"] = meta["id"] or session_id
     if not blocks:
         print(json.dumps({"error": "导出内容为空：会话可能已被清理，或消息均为系统注入内容"},
